@@ -118,66 +118,75 @@ export function MessageInput({
     const SpeechRecognition = getSpeechRecognition()
     if (!SpeechRecognition) return
 
+    // Always clear previous error before trying again
     setVoiceError(null)
     setInterimText('')
 
-    const recognition = new SpeechRecognition()
-    recognition.lang = 'en-US'
-    recognition.continuous = true       // keep recording until user stops
-    recognition.interimResults = true   // show live transcription
-    recognition.maxAlternatives = 1
+    // Request mic permission explicitly first so we get a clean error state
+    navigator.mediaDevices?.getUserMedia({ audio: true })
+      .then(() => {
+        // Permission granted — now start recognition
+        const recognition = new SpeechRecognition()
+        recognition.lang = 'en-US'
+        recognition.continuous = true
+        recognition.interimResults = true
+        recognition.maxAlternatives = 1
 
-    recognition.onstart = () => {
-      setIsListening(true)
-    }
-
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
-      let interim = ''
-      let finalText = ''
-
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript
-        if (e.results[i].isFinal) {
-          finalText += transcript
-        } else {
-          interim += transcript
+        recognition.onstart = () => {
+          setIsListening(true)
+          setVoiceError(null)
         }
-      }
 
-      if (finalText) {
-        setValue((prev) => {
-          const separator = prev.trim() ? ' ' : ''
-          return prev + separator + finalText
-        })
-        setInterimText('')
-      } else {
-        setInterimText(interim)
-      }
-    }
+        recognition.onresult = (e: SpeechRecognitionEvent) => {
+          let interim = ''
+          let finalText = ''
 
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-      if (e.error === 'no-speech') {
-        // silence — not a real error
-        return
-      }
-      if (e.error === 'not-allowed') {
-        setVoiceError('Microphone access denied. Allow microphone in browser settings.')
-      } else if (e.error === 'network') {
-        setVoiceError('Network error. Voice recognition requires internet.')
-      } else {
-        setVoiceError(`Voice error: ${e.error}`)
-      }
-      setIsListening(false)
-      setInterimText('')
-    }
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const transcript = e.results[i][0].transcript
+            if (e.results[i].isFinal) {
+              finalText += transcript
+            } else {
+              interim += transcript
+            }
+          }
 
-    recognition.onend = () => {
-      setIsListening(false)
-      setInterimText('')
-    }
+          if (finalText) {
+            setValue((prev) => {
+              const separator = prev.trim() ? ' ' : ''
+              return prev + separator + finalText
+            })
+            setInterimText('')
+          } else {
+            setInterimText(interim)
+          }
+        }
 
-    recognitionRef.current = recognition
-    recognition.start()
+        recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+          if (e.error === 'no-speech') return // silence — not a real error
+          if (e.error === 'network') {
+            setVoiceError('Network error. Voice recognition requires internet.')
+          } else if (e.error !== 'aborted') {
+            setVoiceError(`Voice error: ${e.error}`)
+          }
+          setIsListening(false)
+          setInterimText('')
+        }
+
+        recognition.onend = () => {
+          setIsListening(false)
+          setInterimText('')
+        }
+
+        recognitionRef.current = recognition
+        recognition.start()
+      })
+      .catch(() => {
+        // Permission denied even after the prompt
+        setVoiceError(
+          'Microphone blocked. Click the 🔒 icon in your browser address bar → set Microphone to "Allow" → then try again.',
+        )
+        setIsListening(false)
+      })
   }, [])
 
   const stopListening = useCallback(() => {
@@ -187,6 +196,7 @@ export function MessageInput({
   }, [])
 
   const toggleVoice = useCallback(() => {
+    setVoiceError(null) // always clear stale errors on click
     if (isListening) {
       stopListening()
     } else {
