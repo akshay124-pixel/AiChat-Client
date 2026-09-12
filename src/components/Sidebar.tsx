@@ -335,7 +335,7 @@ export function Sidebar({
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-text-primary truncate">User</p>
-              <p className="text-xs text-text-muted truncate">Qwen3 4B</p>
+              <p className="text-xs text-text-muted truncate"></p>
             </div>
           </div>
         </div>

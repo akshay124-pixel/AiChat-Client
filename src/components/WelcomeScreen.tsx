@@ -68,7 +68,7 @@ export function WelcomeScreen({ onSuggestion }: WelcomeScreenProps) {
         <span className="text-gradient-brand">today?</span>
       </h1>
       <p className="text-text-secondary text-sm text-center mb-10 max-w-sm">
-        Powered by Qwen3 4B via Ollama. Ask me anything — I'm here to help.
+        Ask me anything — I'm here to help.
       </p>
 
       {/* Suggestion cards */}
